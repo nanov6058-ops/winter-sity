@@ -1,5 +1,5 @@
 FROM ubuntu:22.04
-RUN apt-get update && apt-get install -y wget unzip ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y wget unzip ca-certificates socat && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 ENV GH_HOST=https://github.com
@@ -14,5 +14,6 @@ RUN wget -q -O godot.zip "${GH_HOST}/${GH_REPO}/${GODOT_VER}/${GODOT_ZIP}" \
     && chmod +x server
 
 COPY WinterTown.pck .
-EXPOSE 8080
-CMD ["./server", "--headless", "--main-pack", "WinterTown.pck", "--server"]
+EXPOSE 8080 8000 3000 80
+
+CMD ["sh", "-c", "socat TCP-LISTEN:8000,fork TCP:127.0.0.1:8080 & socat TCP-LISTEN:3000,fork TCP:127.0.0.1:8080 & socat TCP-LISTEN:80,fork TCP:127.0.0.1:8080 & ./server --headless --main-pack WinterTown.pck --server"]
