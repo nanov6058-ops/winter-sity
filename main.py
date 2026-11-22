@@ -16,7 +16,7 @@ def load_data():
     return {
         "users": {},
         "admins": ["колян"],
-        "version": "2.0",
+        "version": "2.3",
         "update_url": ""
     }
 
@@ -35,6 +35,13 @@ def hash_pw(pw: str) -> str:
 class AuthReq(BaseModel):
     nick: str
     password: str
+
+class SaveProfileReq(BaseModel):
+    nick: str
+    password: str
+    money: int
+    businesses: list[str] = []
+    play_time: float = 0.0
 
 class AdminActionReq(BaseModel):
     admin_nick: str
@@ -61,7 +68,7 @@ def root():
         "status": "online",
         "players": len(players),
         "citizens": len(db.get("users", {})),
-        "version": db.get("version", "2.0"),
+        "version": db.get("version", "2.3"),
         "update_url": db.get("update_url", "")
     }
 
@@ -73,10 +80,23 @@ def register(req: AuthReq):
         return {"ok": False, "error": "Ник от 2 символов, пароль от 3"}
     if key in db["users"]:
         return {"ok": False, "error": "Этот ник уже занят!"}
-    db["users"][key] = {"nick": nick, "pw": hash_pw(req.password)}
+    db["users"][key] = {
+        "nick": nick,
+        "pw": hash_pw(req.password),
+        "money": 5000,
+        "businesses": [],
+        "play_time": 0.0
+    }
     save_data(db)
     is_adm = key in [a.lower() for a in db["admins"]]
-    return {"ok": True, "nick": nick, "is_admin": is_adm}
+    return {
+        "ok": True,
+        "nick": nick,
+        "is_admin": is_adm,
+        "money": 5000,
+        "businesses": [],
+        "play_time": 0.0
+    }
 
 @app.post("/login")
 def login(req: AuthReq):
@@ -90,9 +110,24 @@ def login(req: AuthReq):
         "ok": True,
         "nick": user["nick"],
         "is_admin": is_adm,
-        "version": db.get("version", "2.0"),
+        "money": user.get("money", 5000),
+        "businesses": user.get("businesses", []),
+        "play_time": user.get("play_time", 0.0),
+        "version": db.get("version", "2.3"),
         "update_url": db.get("update_url", "")
     }
+
+@app.post("/save_profile")
+def save_profile(req: SaveProfileReq):
+    key = req.nick.strip().lower()
+    user = db["users"].get(key)
+    if not user or user["pw"] != hash_pw(req.password):
+        return {"ok": False}
+    user["money"] = req.money
+    user["businesses"] = req.businesses
+    user["play_time"] = req.play_time
+    save_data(db)
+    return {"ok": True}
 
 @app.post("/admin/add_admin")
 def add_admin(req: AdminActionReq):
