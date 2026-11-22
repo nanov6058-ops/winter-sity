@@ -16,7 +16,7 @@ def load_data():
     return {
         "users": {},
         "admins": ["колян"],
-        "version": "1.8",
+        "version": "2.0",
         "update_url": ""
     }
 
@@ -60,7 +60,8 @@ def root():
     return {
         "status": "online",
         "players": len(players),
-        "version": db.get("version", "1.8"),
+        "citizens": len(db.get("users", {})),
+        "version": db.get("version", "2.0"),
         "update_url": db.get("update_url", "")
     }
 
@@ -89,7 +90,7 @@ def login(req: AuthReq):
         "ok": True,
         "nick": user["nick"],
         "is_admin": is_adm,
-        "version": db.get("version", "1.8"),
+        "version": db.get("version", "2.0"),
         "update_url": db.get("update_url", "")
     }
 
@@ -134,4 +135,7 @@ def sync_player(state: PlayerState):
     active = {pid: p for pid, p in players.items() if now - p["last_seen"] < 5.0}
     players.clear()
     players.update(active)
-    return {"players": active}
+    citizens = [u["nick"] for u in db["users"].values()]
+    if not citizens:
+        citizens = ["колян"]
+    return {"players": active, "citizens": citizens}
