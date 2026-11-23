@@ -62,7 +62,10 @@ def get_meta(k: str, default_val: str) -> str:
         with pg_conn.cursor() as cur:
             cur.execute("SELECT v FROM wc_meta WHERE k = %s", (k,))
             row = cur.fetchone()
-            return row if row else default_val
+            if row:
+                (val,) = row
+                return str(val)
+            return default_val
     return str(file_db.get(k, default_val))
 
 def set_meta(k: str, val: str):
@@ -90,12 +93,13 @@ def get_user(key: str):
             row = cur.fetchone()
             if not row:
                 return None
+            u_nick, u_pw, u_money, u_biz, u_time = row
             return {
-                "nick": row,
-                "pw": row,
-                "money": int(row),
-                "businesses": json.loads(row or "[]"),
-                "play_time": float(row)
+                "nick": u_nick,
+                "pw": u_pw,
+                "money": int(u_money or 5000),
+                "businesses": json.loads(u_biz or "[]"),
+                "play_time": float(u_time or 0.0)
             }
     return file_db["users"].get(key)
 
@@ -130,13 +134,14 @@ def get_city_snapshot():
             cur.execute("SELECT nick, businesses FROM wc_users ORDER BY created_at ASC, nick_key ASC")
             rows = cur.fetchall()
             for idx, r in enumerate(rows):
-                nick = r
+                nick, biz_json = r
                 citizens.append({"nick": nick, "slot": idx})
-                for b_id in json.loads(r or "[]"):
+                for b_id in json.loads(biz_json or "[]"):
                     city_businesses.append({"owner": nick, "id": b_id})
     else:
-        items = sorted(file_db["users"].items(), key=lambda x: x.get("created_at", 0))
-        for idx, (k, u) in enumerate(items):
+        items = sorted(file_db["users"].items(), key=lambda pair: pair[1].get("created_at", 0))
+        for idx, pair in enumerate(items):
+            _, u = pair
             nick = u["nick"]
             citizens.append({"nick": nick, "slot": idx})
             for b_id in u.get("businesses", []):
